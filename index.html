@@ -2,52 +2,55 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Study File - 生徒用プリント作成アプリ</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Study File - プリント作成・保存アプリ</title>
+    
+    <!-- PWA Meta Tags & Icons -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Study File">
+    <!-- Updated Icon matching App Header Theme (Folder Logo + Indigo Theme) -->
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='%234F46E5'><rect width='100' height='100' rx='22'/><path d='M22 34a6 6 0 0 1 6-6h16l6 6h22a6 6 0 0 1 6 6v30a6 6 0 0 1-6 6H28a6 6 0 0 1-6-6V34z' fill='%23ffffff'/><path d='M26 40h48a2 2 0 0 1 2 2v24a4 4 0 0 1-4 4H28a4 4 0 0 1-4-4V42a2 2 0 0 1 2-2z' fill='%23C7D2FE'/></svg>">
+    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- html2pdf.js for generating PDFs -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
+
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
         body {
-            font-family: 'Zen Maru Gothic', 'M PLUS Rounded 1c', sans-serif;
-            background-color: #f3f4f6;
+            font-family: 'Noto Sans JP', 'Inter', sans-serif;
+            background-color: #f1f5f9;
         }
-        /* A4 aspect ratio preview block */
-        .a4-page {
-            width: 210mm;
-            min-height: 297mm;
-            padding: 18mm 15mm;
-            margin: auto;
-            background: white;
+
+        /* A4 aspect ratio helper */
+        .a4-container {
+            width: 100%;
+            max-width: 794px;
+            min-height: 1123px;
+            background-color: white;
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-            position: relative;
-            box-sizing: border-box;
         }
+
         @media print {
-            body {
-                background: white;
+            body { background: white; }
+            .no-print { display: none !important; }
+            .a4-container {
+                box-shadow: none;
+                width: 100%;
+                margin: 0;
                 padding: 0;
             }
-            .no-print {
-                display: none !important;
-            }
-            .a4-page {
-                box-shadow: none;
-                margin: 0;
-                width: 100%;
-                min-height: 100vh;
-                padding: 10mm;
-            }
         }
-        /* Custom scrollbar */
+
+        /* Custom scrollbars */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
         }
         ::-webkit-scrollbar-thumb {
             background: #cbd5e1;
@@ -56,942 +59,763 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
-        /* Hide scrollbar for photo slider */
-        .scrollbar-none::-webkit-scrollbar {
-            display: none;
+
+        /* Touch scroll slider styling */
+        .slider-container {
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
         }
-        .scrollbar-none {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+        .slide-item {
+            scroll-snap-align: center;
         }
     </style>
 </head>
-<body class="bg-slate-100 min-h-screen flex flex-col text-slate-800">
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
 
-    <!-- Header Bar -->
-    <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-30 no-print">
+    <!-- Navbar -->
+    <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-40 no-print">
         <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="bg-white/20 p-2 rounded-xl text-white">
-                    <i class="fa-solid fa-folder-closed text-xl"></i>
+            <div class="flex items-center space-x-3">
+                <div class="bg-white/20 p-2 rounded-lg">
+                    <i class="fa-solid fa-folder-open text-xl text-white"></i>
                 </div>
                 <div>
-                    <h1 class="font-bold text-lg md:text-xl leading-tight">Study File</h1>
-                    <p class="text-xs text-indigo-100 hidden sm:block">写真を撮影・選択して簡単に提出用プリントを作成・保存！</p>
+                    <h1 class="font-bold text-lg leading-tight flex items-center gap-2">
+                        Study File
+                    </h1>
+                    <p class="text-xs text-indigo-200">プリントを撮ってまとめる・保存できる</p>
                 </div>
             </div>
-            
-            <!-- Navigation Actions -->
-            <div class="flex items-center gap-2">
-                <button onclick="switchTab('editor')" id="tab-btn-editor" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-white text-indigo-700 shadow-sm transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-pen-to-square"></i>
-                    <span>つくるところ</span>
+            <div class="flex items-center space-x-2">
+                <button onclick="switchTab('create')" id="tab-btn-create" class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-white text-indigo-600 transition shadow">
+                    <i class="fa-solid fa-plus mr-1"></i>プリント作成
                 </button>
-                <button onclick="switchTab('saved')" id="tab-btn-saved" class="px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-500/50 text-white transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-folder-open"></i>
-                    <span>ほぞんしたプリント</span>
-                    <span id="saved-count-badge" class="bg-amber-400 text-indigo-950 text-xs font-bold px-1.5 py-0.5 rounded-full ml-0.5 hidden">0</span>
+                <button onclick="switchTab('saved')" id="tab-btn-saved" class="px-3 py-1.5 text-xs font-semibold rounded-lg text-indigo-100 hover:bg-indigo-500 transition">
+                    <i class="fa-solid fa-box-archive mr-1"></i>ほぞんしたプリント
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- Main Content Area -->
+    <!-- Main Container -->
     <main class="flex-grow max-w-7xl w-full mx-auto p-3 sm:p-6">
-
-        <!-- EDITOR VIEW -->
-        <div id="editor-view" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            
-            <!-- Control Panel / Input Form (Left Side) -->
-            <div class="lg:col-span-5 bg-white p-5 rounded-2xl shadow-sm border border-slate-200 no-print flex flex-col gap-5">
+        
+        <!-- ==================== TAB 1: EDIT / CREATE PRINT ==================== -->
+        <div id="section-create" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
-                <div class="border-b border-slate-100 pb-3 flex justify-between items-center">
-                    <h2 class="font-bold text-slate-700 text-base flex items-center gap-2">
-                        <i class="fa-solid fa-sliders text-indigo-500"></i>
-                        プリントのじょうほう入力
-                    </h2>
-                    <button onclick="resetForm()" class="text-xs text-slate-400 hover:text-rose-500 transition flex items-center gap-1">
-                        <i class="fa-solid fa-rotate-left"></i> リセット
-                    </button>
-                </div>
-
-                <!-- Template Selector -->
-                <div class="border-b border-slate-100 pb-3">
-                    <label class="block text-xs font-bold text-slate-600 mb-2 flex justify-between items-center">
-                        <span>プリント写真を撮影・追加</span>
-                        <span id="photo-count-badge" class="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-full">0枚</span>
-                    </label>
+                <!-- Left Control Panel (Inputs & Photo Uploads) -->
+                <div class="lg:col-span-5 space-y-4 no-print">
                     
-                    <div class="grid grid-cols-2 gap-2 mb-3">
-                        <!-- DIRECT CAMERA INPUT -->
-                        <label class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white p-3 rounded-xl text-xs font-bold cursor-pointer transition flex items-center justify-center gap-2 shadow-sm text-center">
-                            <i class="fa-solid fa-camera text-base"></i>
-                            <span>カメラで撮影</span>
-                            <input type="file" accept="image/*" capture="environment" onchange="handleDirectCameraCapture(event)" class="hidden">
-                        </label>
-
-                        <!-- FILE UPLOAD INPUT -->
-                        <label class="bg-slate-800 hover:bg-slate-900 active:scale-95 text-white p-3 rounded-xl text-xs font-bold cursor-pointer transition flex items-center justify-center gap-2 shadow-sm text-center">
-                            <i class="fa-solid fa-folder-open text-base"></i>
-                            <span>アルバム・ファイル</span>
-                            <input type="file" id="image-upload-multi" accept="image/*" multiple onchange="handleMultiImageUpload(event)" class="hidden">
-                        </label>
-                    </div>
-
-                    <!-- Photo List Area -->
-                    <div id="photo-list-container" class="space-y-2 max-h-60 overflow-y-auto pr-1">
-                        <div id="photo-empty-hint" class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center text-xs text-slate-400">
-                            写真が追加されていません。<br>上のボタンから何枚でも撮影・追加できます。
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Basic Header Data -->
-                <div class="space-y-3">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1" for="print-title">プリントのタイトル <span class="text-rose-500">*</span></label>
-                        <input type="text" id="print-title" oninput="updatePreview()" placeholder="例: 数学 週末課題プリント / 理科 テスト直し" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400 focus:outline-none transition">
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1" for="subject-name">教科名 / 科目</label>
-                            <input type="text" id="subject-name" oninput="updatePreview()" placeholder="例: 数学Ⅰ / 理科" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400 focus:outline-none transition">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-600 mb-1" for="print-date">日付</label>
-                            <input type="date" id="print-date" onchange="updatePreview()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400 focus:outline-none transition">
-                        </div>
-                    </div>
-
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 mb-1" for="class-info">学年・組・番号</label>
-                        <input type="text" id="class-info" oninput="updatePreview()" placeholder="例: 2年1組 15番" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400 focus:outline-none transition">
-                    </div>
-                </div>
-
-                <!-- Text / Notes Section -->
-                <div class="border-t border-slate-100 pt-3">
-                    <label class="block text-xs font-bold text-slate-600 mb-1" for="photo-caption">ワンポイントメモ（任意）</label>
-                    <input type="text" id="photo-caption" oninput="updatePreview()" placeholder="例: 提出期限: 10月10日 / 問3〜5の直し完了" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-400 focus:outline-none transition">
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="border-t border-slate-100 pt-4 flex flex-col sm:flex-row gap-2">
-                    <button onclick="savePrintLocally()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white py-2.5 px-4 rounded-xl text-sm font-bold shadow-sm transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-floppy-disk"></i>
-                        <span>アプリ内に保存</span>
-                    </button>
-                    
-                    <button onclick="exportPDF()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white py-2.5 px-4 rounded-xl text-sm font-bold shadow-sm transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-file-pdf"></i>
-                        <span>PDFでダウンロード</span>
-                    </button>
-                </div>
-
-                <div class="flex gap-2">
-                    <button onclick="window.print()" class="w-full bg-slate-700 hover:bg-slate-800 text-white py-2 px-3 rounded-xl text-xs font-medium transition flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-print"></i>
-                        <span>そのまま印刷する</span>
-                    </button>
-                </div>
-
-            </div>
-
-            <!-- Live Preview / Paper Display (Right Side) -->
-            <div class="lg:col-span-7 flex flex-col items-center">
-                <!-- Preview Toolbar -->
-                <div class="w-full max-w-[210mm] mb-2 flex justify-between items-center text-xs text-slate-500 no-print px-1">
-                    <span class="font-medium flex items-center gap-1.5">
-                        <i class="fa-solid fa-eye text-indigo-500"></i>
-                        プリント完成プレビュー (A4サイズ)
-                    </span>
-                    <span class="text-[11px] bg-slate-200 px-2 py-0.5 rounded-full text-slate-600">自動修正・更新中</span>
-                </div>
-
-                <!-- Printable Container Area -->
-                <div class="w-full overflow-x-auto pb-6">
-                    <div id="printable-area" class="a4-page transition-all">
+                    <!-- Print Meta Card -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                        <h2 class="font-bold text-slate-800 flex items-center text-base border-b border-slate-100 pb-3">
+                            <i class="fa-solid fa-pen-to-square text-indigo-600 mr-2"></i>プリントの情報
+                        </h2>
                         
-                        <!-- Header Section -->
-                        <div class="border-b-2 border-indigo-600 pb-4 mb-5 flex justify-between items-end">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">タイトル <span class="text-red-500">*</span></label>
+                            <input type="text" id="input-title" placeholder="例: 数学 小テスト 第3回" value="" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" oninput="updatePreview()">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <span id="prev-subject" class="inline-block bg-indigo-100 text-indigo-800 text-xs font-bold px-2.5 py-0.5 rounded mb-1">
-                                    教科名未設定
-                                </span>
-                                <h1 id="prev-title" class="text-2xl font-bold text-slate-900 tracking-tight leading-tight">
-                                    タイトルをここに入力
-                                </h1>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">教科</label>
+                                <input type="text" id="input-subject" placeholder="例: 数学 / 理科" value="" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" oninput="updatePreview()">
                             </div>
-                            <div class="text-right text-xs text-slate-600 space-y-0.5 min-w-[140px]">
-                                <div class="border-b border-slate-200 pb-0.5" id="prev-date-container">
-                                    日付: <span id="prev-date" class="font-medium text-slate-800">----/--/--</span>
-                                </div>
-                                <div class="pt-0.5">
-                                    <span id="prev-class" class="font-medium text-slate-800">--年--組--番</span>
-                                </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">日付</label>
+                                <input type="date" id="input-date" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" onchange="updatePreview()">
                             </div>
                         </div>
 
-                        <!-- Dynamic Content Layout based on selected Template -->
-                        <div id="dynamic-content" class="space-y-5">
-                            <!-- Populated dynamically by JS -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">メモ・説明（任意）</label>
+                            <textarea id="input-memo" rows="2" placeholder="間違えた問題のやり直しなど" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" oninput="updatePreview()"></textarea>
                         </div>
-
-                        <!-- Footer Branding / Page Info -->
-                        <div class="absolute bottom-6 left-12 right-12 pt-2 border-t border-slate-200 flex justify-between items-center text-[10px] text-slate-400">
-                            <span>Study File</span>
-                            <span>提出用プリントシート</span>
-                        </div>
-
                     </div>
+
+                    <!-- Photo Upload Section -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h2 class="font-bold text-slate-800 flex items-center text-base">
+                                <i class="fa-solid fa-images text-indigo-600 mr-2"></i>プリント写真の追加
+                            </h2>
+                            <span id="photo-count-badge" class="text-xs bg-indigo-50 text-indigo-600 font-semibold px-2.5 py-1 rounded-full">0枚</span>
+                        </div>
+
+                        <!-- Single Upload Button ONLY -->
+                        <div>
+                            <input type="file" id="file-input" accept="image/*" multiple class="hidden" onchange="handleFileSelect(event)">
+                            <button onclick="document.getElementById('file-input').click()" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl font-bold text-base shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 transition-all">
+                                <i class="fa-solid fa-cloud-arrow-up text-xl"></i>
+                                写真をアップロード
+                            </button>
+                            <p class="text-xs text-center text-slate-400 mt-2">※ファイルまたはカメラで撮影した写真を選べます（複数枚OK）</p>
+                        </div>
+
+                        <!-- Photo List & Sorting -->
+                        <div id="photos-manage-list" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                            <p class="text-xs text-center text-slate-400 py-4">写真がまだありません。「写真をアップロード」から追加してください。</p>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex flex-col gap-2">
+                        <button onclick="savePrintToStorage()" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl shadow-md flex items-center justify-center gap-2 transition">
+                            <i class="fa-solid fa-floppy-disk text-lg"></i> Study File に保存する
+                        </button>
+                    </div>
+
                 </div>
 
-            </div>
+                <!-- Right Side: A4 Realtime Live Preview -->
+                <div class="lg:col-span-7 flex flex-col items-center">
+                    <div class="w-full flex items-center justify-between mb-2 px-1 no-print">
+                        <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center">
+                            <i class="fa-solid fa-eye mr-1"></i> A4プレビュー
+                        </span>
+                        <span class="text-xs text-slate-400">※この見た目でファイル化されます</span>
+                    </div>
 
+                    <!-- A4 Page Target -->
+                    <div id="a4-page" class="a4-container p-8 sm:p-10 rounded-xl flex flex-col justify-between">
+                        <div>
+                            <!-- Header Info Block -->
+                            <div class="border-b-2 border-indigo-600 pb-4 mb-6 flex justify-between items-end">
+                                <div>
+                                    <span id="prev-subject" class="inline-block px-2.5 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-md mb-2">教科未指定</span>
+                                    <h1 id="prev-title" class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">タイトルなし</h1>
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-xs text-slate-500" id="prev-date">2026/10/31</div>
+                                </div>
+                            </div>
+
+                            <!-- Optional Memo Block -->
+                            <div id="prev-memo-box" class="mb-6 p-3 bg-slate-50 border-l-4 border-indigo-400 rounded-r-lg text-xs text-slate-700 hidden">
+                                <p class="font-bold text-slate-500 mb-0.5">メモ:</p>
+                                <p id="prev-memo" class="whitespace-pre-wrap"></p>
+                            </div>
+
+                            <!-- Photos Grid/Slider Canvas -->
+                            <div id="prev-photos-container" class="w-full">
+                                <!-- Dynamic Render Photos Slider -->
+                            </div>
+                        </div>
+
+                        <!-- Footer Branding -->
+                        <div class="pt-6 border-t border-slate-100 text-between flex justify-between items-center text-[10px] text-slate-400 mt-8">
+                            <span>Study File App</span>
+                            <span>A4 Document</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- SAVED PRINTS LIST VIEW -->
-        <div id="saved-view" class="hidden max-w-4xl mx-auto">
-            <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
-                    <div>
-                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                            <i class="fa-solid fa-folder-closed text-indigo-600"></i>
-                            保存されたプリント一覧
-                        </h2>
-                        <p class="text-xs text-slate-500 mt-0.5">ブラウザに保存されたプリントの再編集・PDFダウンロードができます。</p>
-                    </div>
-                    <button onclick="createNewPrint()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5">
-                        <i class="fa-solid fa-plus"></i> 新しくつくる
-                    </button>
+        <!-- ==================== TAB 2: SAVED PRINTS GALLERY ==================== -->
+        <div id="section-saved" class="hidden space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-4">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-800 flex items-center">
+                        <i class="fa-solid fa-box-archive text-indigo-600 mr-2.5"></i>ほぞんしたプリント
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">保存されたプリント一覧です。再編集や他アプリへ共有・転送ができます。</p>
                 </div>
+            </div>
 
-                <!-- Empty State -->
-                <div id="saved-empty-state" class="text-center py-12 hidden">
-                    <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
-                        <i class="fa-solid fa-folder-open"></i>
-                    </div>
-                    <p class="text-slate-600 font-medium text-sm">保存されたプリントはありません</p>
-                    <p class="text-xs text-slate-400 mt-1">「つくるところ」から新しく作成して保存してみてください。</p>
-                </div>
-
-                <!-- Grid of Cards -->
-                <div id="saved-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Cards dynamically inserted here -->
-                </div>
+            <!-- Saved Files Grid Container -->
+            <div id="saved-list-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Dynamic Items Render Here -->
             </div>
         </div>
 
     </main>
 
-    <!-- Camera Modal Container -->
-    <div id="camera-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-md w-full p-4 flex flex-col items-center gap-4 relative shadow-2xl">
-            <div class="w-full flex justify-between items-center border-b pb-2">
-                <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
-                    <i class="fa-solid fa-camera text-indigo-600"></i>
-                    プリントの写真を撮影
-                </h3>
-                <button onclick="closeCameraModal()" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition" aria-label="閉じる">
-                    <i class="fa-solid fa-xmark text-xl"></i>
-                </button>
-            </div>
+    <!-- Modal for Zoom (Full Screen Gallery Slider) -->
+    <div id="modal-zoom-image" class="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-between p-4 hidden select-none" onclick="closeZoomModal()">
+        <!-- Top bar -->
+        <div class="w-full max-w-4xl flex items-center justify-between text-white py-2 px-3 z-10" onclick="event.stopPropagation()">
+            <span id="zoom-image-counter" class="text-sm font-semibold bg-white/20 px-3 py-1 rounded-full">1 / 1</span>
+            <button onclick="closeZoomModal()" class="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white transition">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+        </div>
 
-            <!-- Video Stream Container -->
-            <div class="relative w-full aspect-[4/3] bg-black rounded-xl overflow-hidden flex items-center justify-center">
-                <video id="camera-video" autoplay playsinline class="w-full h-full object-cover"></video>
-                <div id="camera-error" class="hidden text-white text-xs text-center p-6 flex flex-col items-center gap-3">
-                    <i class="fa-solid fa-camera text-amber-400 text-3xl mb-1 block"></i>
-                    <p class="font-bold text-sm">カメラ画面を起動できませんでした</p>
-                    <p class="text-xs text-slate-300">以下のボタンから端末のカメラを起動して撮影できます：</p>
-                    <label class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white px-5 py-3 rounded-xl text-xs font-bold cursor-pointer transition mt-2 inline-flex items-center gap-2 shadow-md">
-                        <i class="fa-solid fa-camera"></i>
-                        <span>カメラを起動して撮影</span>
-                        <input type="file" accept="image/*" capture="environment" onchange="handleFallbackCameraCapture(event)" class="hidden">
-                    </label>
-                </div>
-            </div>
+        <!-- Image viewport & Navigation buttons -->
+        <div id="zoom-viewport" class="relative w-full max-w-4xl flex-grow flex items-center justify-center my-auto overflow-hidden" onclick="event.stopPropagation()">
+            <!-- Prev Btn -->
+            <button id="zoom-prev-btn" onclick="prevZoomImage()" class="absolute left-2 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/50 hover:bg-black/80 text-white rounded-full flex items-center justify-center text-xl transition z-20">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
 
-            <!-- Hidden Canvas for capturing image -->
-            <canvas id="camera-canvas" class="hidden"></canvas>
+            <!-- Active Zoom Image -->
+            <img id="zoom-modal-img" src="" alt="拡大写真" class="max-h-[80vh] max-w-full object-contain rounded-lg transition-transform duration-200">
 
-            <!-- Camera Controls (Single action button) -->
-            <div class="flex items-center justify-center w-full pt-1" id="camera-controls">
-                <button onclick="takePicture()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-sm font-bold shadow-md transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-circle text-rose-500 text-xs"></i> 撮影する
-                </button>
-            </div>
+            <!-- Next Btn -->
+            <button id="zoom-next-btn" onclick="nextZoomImage()" class="absolute right-2 top-1/2 -translate-y-1/2 w-12 h-12 bg-black/50 hover:bg-black/80 text-white rounded-full flex items-center justify-center text-xl transition z-20">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+
+        <div class="text-xs text-slate-400 py-2">
+            ※画面のどこかをタップすると閉じます（左右にスワイプで写真移動）
         </div>
     </div>
 
-    <!-- Image Fullscreen Preview Modal -->
-    <div id="image-viewer-modal" onclick="closeImageViewer()" class="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4 hidden">
-        <button onclick="closeImageViewer()" class="absolute top-4 right-4 text-white hover:text-slate-300 bg-white/10 hover:bg-white/20 w-10 h-10 rounded-full flex items-center justify-center text-xl transition">
-            <i class="fa-solid fa-xmark"></i>
-        </button>
-        <div class="max-w-4xl max-h-[85vh] w-full flex justify-center items-center p-2">
-            <img id="viewer-img" src="" class="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl border border-white/20">
-        </div>
-        <p class="text-slate-300 text-xs mt-3 bg-black/40 px-3 py-1 rounded-full">画面をタップ・クリックで閉じます</p>
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 bg-slate-800 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 transition-all duration-300 opacity-0 translate-y-4 pointer-events-none">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toast-message" class="text-sm font-medium">保存しました</span>
     </div>
 
-    <!-- Print File Detail Viewer Modal -->
-    <div id="print-detail-modal" class="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
-            <!-- Modal Header -->
-            <div class="bg-slate-900 text-white p-4 flex justify-between items-center border-b border-slate-800">
-                <div class="flex items-center gap-2">
-                    <span id="detail-subject-badge" class="bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded">教科</span>
-                    <h3 id="detail-title" class="font-bold text-base truncate max-w-xs sm:max-w-md">プリント詳細</h3>
-                </div>
-                <button onclick="closePrintDetailModal()" class="text-slate-400 hover:text-white p-1">
-                    <i class="fa-solid fa-xmark text-xl"></i>
-                </button>
-            </div>
-
-            <!-- Modal Content (Print Details & Photos Slider) -->
-            <div class="p-5 overflow-y-auto space-y-4 flex-grow bg-slate-50">
-                <div class="bg-white p-3 rounded-xl border border-slate-200 text-xs text-slate-600 grid grid-cols-3 gap-2 text-center">
-                    <div><span class="font-bold text-slate-800 block">所属</span> <span id="detail-class-info">-</span></div>
-                    <div><span class="font-bold text-slate-800 block">日付</span> <span id="detail-date">-</span></div>
-                    <div><span class="font-bold text-slate-800 block">写真枚数</span> <span id="detail-photo-count">0枚</span></div>
-                    <div id="detail-memo-wrapper" class="col-span-3 pt-2 border-t border-slate-100 hidden text-left">
-                        <span class="font-bold text-slate-800">メモ:</span> <span id="detail-memo">-</span>
-                    </div>
-                </div>
-
-                <div class="space-y-2">
-                    <div class="flex justify-between items-center">
-                        <h4 class="font-bold text-xs text-slate-700 flex items-center gap-1.5">
-                            <i class="fa-solid fa-images text-indigo-500"></i>
-                            添付写真 (<span id="detail-slide-indicator" class="text-indigo-600 font-bold">1/1</span>)
-                        </h4>
-                        <span class="text-[11px] text-slate-400 flex items-center gap-1">
-                            <i class="fa-solid fa-hand-pointer text-indigo-400"></i> 左右にスライド
-                        </span>
-                    </div>
-
-                    <!-- Horizontal Photo Slider -->
-                    <div class="relative group">
-                        <!-- Navigation Arrows -->
-                        <button id="slider-prev-btn" onclick="slideDetailPhotos(-1)" class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white w-9 h-9 rounded-full flex items-center justify-center z-10 transition shadow-lg opacity-80 hover:opacity-100 disabled:opacity-20 disabled:pointer-events-none">
-                            <i class="fa-solid fa-chevron-left text-sm"></i>
-                        </button>
-                        <button id="slider-next-btn" onclick="slideDetailPhotos(1)" class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white w-9 h-9 rounded-full flex items-center justify-center z-10 transition shadow-lg opacity-80 hover:opacity-100 disabled:opacity-20 disabled:pointer-events-none">
-                            <i class="fa-solid fa-chevron-right text-sm"></i>
-                        </button>
-
-                        <!-- Scrollable Container -->
-                        <div id="detail-photos-slider" class="flex overflow-x-auto snap-x snap-mandatory scrollbar-none gap-3 py-1 px-1 scroll-smooth rounded-xl">
-                            <!-- Dynamic photo slides -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Modal Footer Actions -->
-            <div class="p-3 bg-white border-t border-slate-200 flex justify-end gap-2">
-                <button id="detail-edit-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-pen-to-square"></i> 編集する
-                </button>
-                <button onclick="closePrintDetailModal()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold px-4 py-2 rounded-xl transition">
-                    とじる
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Custom Toast Message -->
-    <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-lg transition-all transform translate-y-20 opacity-0 z-50 flex items-center gap-2">
-        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
-        <span id="toast-msg">保存しました</span>
-    </div>
-
+    <!-- Application Script -->
     <script>
-        // State Variables
-        let images = []; // Dynamic array for photos
-        let savedPrints = [];
-        let currentEditingId = null;
-        let currentDetailPhotos = [];
-        let currentSlideIndex = 0;
+        // --- State Management ---
+        let currentPhotos = []; // Array of base64 data URLs for current working print
+        let savedPrints = [];  // Saved print items list
+        let currentZoomList = []; // Active list of images being viewed in zoom modal
+        let currentZoomIndex = 0; // Current image index in zoom modal
 
-        // IndexedDB Configuration for reliable local storage
-        const DB_NAME = 'StudentPrintMakerDB';
+        // --- IndexedDB Setup for Large Storage ---
+        const DB_NAME = 'StudyFileDB';
         const DB_VERSION = 1;
         const STORE_NAME = 'prints';
-        let db = null;
 
-        // Initialize App on DOM Load
-        window.addEventListener('DOMContentLoaded', async () => {
-            // Set default date to today
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('print-date').value = today;
-
-            // Initialize DB & Load Saved Items
-            await initDB();
-            await loadSavedPrints();
-
-            renderPhotoList();
-            updatePreview();
-        });
-
-        // Handle Direct Camera Capture (1-tap native camera launch)
-        function handleDirectCameraCapture(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    images.push(event.target.result);
-                    renderPhotoList();
-                    updatePreview();
-                    showToast('写真を撮影して追加しました！');
-                    e.target.value = ''; // Reset input selection for next photo
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        // Handle multi-file upload from device
-        function handleMultiImageUpload(event) {
-            const files = Array.from(event.target.files || []);
-            if (files.length === 0) return;
-
-            let loadedCount = 0;
-            files.forEach(file => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    images.push(e.target.result);
-                    loadedCount++;
-                    if (loadedCount === files.length) {
-                        renderPhotoList();
-                        updatePreview();
-                        showToast(`${files.length}枚の写真を追加しました！`);
-                        event.target.value = ''; // Reset input selection
-                    }
-                };
-                reader.readAsDataURL(file);
-            });
-        }
-
-        // Render uploaded/captured photo thumbnails list
-        function renderPhotoList() {
-            const container = document.getElementById('photo-list-container');
-            const countBadge = document.getElementById('photo-count-badge');
-
-            if (countBadge) countBadge.innerText = `${images.length}枚`;
-
-            if (!container) return;
-
-            if (images.length === 0) {
-                container.innerHTML = `
-                    <div id="photo-empty-hint" class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center text-xs text-slate-400">
-                        写真が追加されていません。<br>上のボタンから何枚でも撮影・追加できます。
-                    </div>
-                `;
-                return;
-            }
-
-            let listHTML = '<div class="space-y-2">';
-            images.forEach((imgSrc, index) => {
-                listHTML += `
-                    <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
-                        <img src="${imgSrc}" onclick="openImageViewer('${imgSrc}')" class="w-12 h-12 object-cover rounded-lg cursor-pointer border border-slate-300 hover:opacity-80 transition">
-                        <span class="text-xs text-slate-600 font-bold flex-grow truncate">写真 ${index + 1}</span>
-                        <div class="flex items-center gap-1">
-                            <button type="button" onclick="movePhoto(${index}, -1)" ${index === 0 ? 'disabled class="text-slate-300 p-1.5"' : 'class="text-slate-500 hover:text-indigo-600 p-1.5 transition"'}>
-                                <i class="fa-solid fa-arrow-up text-xs"></i>
-                            </button>
-                            <button type="button" onclick="movePhoto(${index}, 1)" ${index === images.length - 1 ? 'disabled class="text-slate-300 p-1.5"' : 'class="text-slate-500 hover:text-indigo-600 p-1.5 transition"'}>
-                                <i class="fa-solid fa-arrow-down text-xs"></i>
-                            </button>
-                            <button type="button" onclick="removePhoto(${index})" class="text-rose-500 hover:text-rose-700 p-1.5 transition">
-                                <i class="fa-solid fa-trash-can text-xs"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            });
-            listHTML += '</div>';
-            container.innerHTML = listHTML;
-        }
-
-        function removePhoto(index) {
-            images.splice(index, 1);
-            renderPhotoList();
-            updatePreview();
-            showToast('写真を削除しました');
-        }
-
-        function movePhoto(index, direction) {
-            const newIndex = index + direction;
-            if (newIndex < 0 || newIndex >= images.length) return;
-            const temp = images[index];
-            images[index] = images[newIndex];
-            images[newIndex] = temp;
-            renderPhotoList();
-            updatePreview();
-        }
-
-        function openImageViewer(src) {
-            const modal = document.getElementById('image-viewer-modal');
-            const img = document.getElementById('viewer-img');
-            if (modal && img) {
-                img.src = src;
-                modal.classList.remove('hidden');
-            }
-        }
-
-        function closeImageViewer() {
-            const modal = document.getElementById('image-viewer-modal');
-            if (modal) {
-                modal.classList.add('hidden');
-            }
-        }
-
-        // Render Live Preview based on Inputs & Photos
-        function updatePreview() {
-            // Header Info Updates
-            const title = document.getElementById('print-title').value.trim() || 'プリントタイトル未設定';
-            const subject = document.getElementById('subject-name').value.trim() || '教科未指定';
-            const dateVal = document.getElementById('print-date').value;
-            const classInfo = document.getElementById('class-info').value.trim() || '年 組 番';
-            const memo = document.getElementById('photo-caption').value.trim();
-
-            document.getElementById('prev-title').innerText = title;
-            document.getElementById('prev-subject').innerText = subject;
-            document.getElementById('prev-class').innerText = classInfo;
-            
-            if (dateVal) {
-                const d = new Date(dateVal);
-                document.getElementById('prev-date').innerText = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
-            } else {
-                document.getElementById('prev-date').innerText = '----/--/--';
-            }
-
-            // Dynamic Content Construction
-            const container = document.getElementById('dynamic-content');
-            container.innerHTML = '';
-
-            if (memo) {
-                container.innerHTML += `
-                    <div class="text-xs text-slate-700 bg-slate-50 border-l-4 border-indigo-500 p-2.5 rounded-r-lg mb-3 flex items-center gap-2">
-                        <i class="fa-solid fa-note-sticky text-indigo-500"></i>
-                        <span class="font-bold">メモ:</span> ${escapeHtml(memo)}
-                    </div>
-                `;
-            }
-
-            if (images.length === 0) {
-                container.innerHTML += `
-                    <div class="border-2 border-dashed border-slate-200 rounded-2xl p-16 text-center text-slate-400 text-sm my-6 bg-slate-50/50 flex flex-col items-center justify-center gap-3 min-h-[400px]">
-                        <i class="fa-solid fa-camera text-4xl text-slate-300"></i>
-                        <span class="font-medium text-slate-500">プリントの写真がありません</span>
-                        <span class="text-xs text-slate-400">左側のボタンから何枚でも撮影・追加できます。</span>
-                    </div>
-                `;
-            } else if (images.length === 1) {
-                // 1 PHOTO: FULL PREVIEW
-                container.innerHTML += `
-                    <div onclick="openImageViewer('${images[0]}')" class="border rounded-2xl p-2 bg-slate-50 text-center shadow-sm flex items-center justify-center min-h-[550px] overflow-hidden cursor-pointer group hover:border-indigo-400 transition relative">
-                        <img src="${images[0]}" class="max-h-[620px] w-full object-contain rounded-xl">
-                        <span class="absolute bottom-4 right-4 bg-black/60 text-white text-[11px] px-3 py-1 rounded-full opacity-0 group-hover:opacity-100 transition flex items-center gap-1">
-                            <i class="fa-solid fa-magnifying-glass-plus"></i> タップで拡大
-                        </span>
-                    </div>
-                `;
-            } else {
-                // MULTIPLE PHOTOS: ADAPTIVE GRID
-                const gridCols = 'grid-cols-2';
-                const maxHeight = images.length <= 2 ? 'max-h-[520px]' : 'max-h-[350px]';
-
-                let photosHTML = `<div class="grid ${gridCols} gap-3 items-stretch">`;
-                images.forEach((imgSrc) => {
-                    photosHTML += `
-                        <div onclick="openImageViewer('${imgSrc}')" class="border rounded-xl p-2 bg-slate-50 text-center shadow-sm flex items-center justify-center overflow-hidden cursor-pointer group hover:border-indigo-400 transition relative">
-                            <img src="${imgSrc}" class="${maxHeight} w-full object-contain rounded-lg">
-                            <span class="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition flex items-center gap-1">
-                                <i class="fa-solid fa-magnifying-glass-plus"></i> 拡大
-                            </span>
-                        </div>
-                    `;
-                });
-                photosHTML += `</div>`;
-                container.innerHTML += photosHTML;
-            }
-        }
-
-        // Save current print to IndexedDB
-        async function savePrintLocally() {
-            const title = document.getElementById('print-title').value.trim();
-
-            if (!title) {
-                showToast('タイトルを入力してください', 'error');
-                document.getElementById('print-title').focus();
-                return;
-            }
-
-            const printData = {
-                id: currentEditingId || `print_${Date.now()}`,
-                title: title,
-                subject: document.getElementById('subject-name').value.trim(),
-                date: document.getElementById('print-date').value,
-                classInfo: document.getElementById('class-info').value.trim(),
-                photoCaption: document.getElementById('photo-caption').value.trim(),
-                images: [...images],
-                updatedAt: new Date().toISOString()
-            };
-
-            if (!db) {
-                showToast('データベースの準備ができていません', 'error');
-                return;
-            }
-
-            const tx = db.transaction(STORE_NAME, 'readwrite');
-            const store = tx.objectStore(STORE_NAME);
-            
-            store.put(printData);
-
-            tx.oncomplete = async () => {
-                currentEditingId = printData.id;
-                showToast('保存しました！');
-                await loadSavedPrints();
-            };
-
-            tx.onerror = () => {
-                showToast('保存に失敗しました', 'error');
-            };
-        }
-
-        // Render Saved Prints List in Saved Tab
-        function renderSavedPrints() {
-            const grid = document.getElementById('saved-grid');
-            const emptyState = document.getElementById('saved-empty-state');
-            const badge = document.getElementById('saved-count-badge');
-
-            if (savedPrints.length > 0) {
-                badge.innerText = savedPrints.length;
-                badge.classList.remove('hidden');
-            } else {
-                badge.classList.add('hidden');
-            }
-
-            if (savedPrints.length === 0) {
-                grid.innerHTML = '';
-                emptyState.classList.remove('hidden');
-                return;
-            }
-
-            emptyState.classList.add('hidden');
-            grid.innerHTML = '';
-
-            savedPrints.forEach(print => {
-                const imgCount = Array.isArray(print.images) ? print.images.length : 0;
-                const coverImg = imgCount > 0 ? print.images[0] : null;
-
-                const card = document.createElement('div');
-                card.className = 'bg-slate-50 border border-slate-200 rounded-2xl p-4 flex gap-4 items-center hover:shadow-md transition';
-                
-                card.innerHTML = `
-                    <div onclick="viewPrintDetail('${print.id}')" class="w-20 h-24 bg-slate-200 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center border border-slate-300 cursor-pointer hover:opacity-80 transition relative">
-                        ${coverImg ? `<img src="${coverImg}" class="w-full h-full object-cover">` : `<i class="fa-solid fa-file-image text-2xl text-slate-400"></i>`}
-                    </div>
-                    <div class="flex-grow min-w-0">
-                        <span class="inline-block bg-indigo-100 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded mb-1">
-                            ${escapeHtml(print.subject || '教科未設定')}
-                        </span>
-                        <h3 class="font-bold text-slate-800 text-sm truncate cursor-pointer hover:text-indigo-600 transition" onclick="viewPrintDetail('${print.id}')">${escapeHtml(print.title)}</h3>
-                        <p class="text-[10px] text-slate-400 mt-1">${print.date || ''} (${imgCount}枚の写真)</p>
-                        
-                        <div class="flex gap-2 mt-3">
-                            <button onclick="viewPrintDetail('${print.id}')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1">
-                                <i class="fa-solid fa-eye"></i> 中身を見る
-                            </button>
-                            <button onclick="editPrint('${print.id}')" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold px-2.5 py-1.5 rounded-lg transition flex items-center gap-1">
-                                <i class="fa-solid fa-pen-to-square"></i> 編集
-                            </button>
-                            <button onclick="deleteSavedPrint('${print.id}')" class="bg-rose-100 hover:bg-rose-200 text-rose-600 text-xs font-bold px-2.5 py-1.5 rounded-lg transition">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        // View Saved Print Content in Detail Modal with Horizontal Slider
-        function viewPrintDetail(id) {
-            const print = savedPrints.find(p => p.id === id);
-            if (!print) return;
-
-            document.getElementById('detail-title').innerText = print.title || '無題のプリント';
-            document.getElementById('detail-subject-badge').innerText = print.subject || '教科未指定';
-            document.getElementById('detail-class-info').innerText = print.classInfo || '未指定';
-            document.getElementById('detail-date').innerText = print.date || '未設定';
-
-            currentDetailPhotos = Array.isArray(print.images) ? print.images : [];
-            document.getElementById('detail-photo-count').innerText = `${currentDetailPhotos.length}枚`;
-
-            const memoWrapper = document.getElementById('detail-memo-wrapper');
-            if (print.photoCaption) {
-                document.getElementById('detail-memo').innerText = print.photoCaption;
-                memoWrapper.classList.remove('hidden');
-            } else {
-                memoWrapper.classList.add('hidden');
-            }
-
-            const photosSlider = document.getElementById('detail-photos-slider');
-            photosSlider.innerHTML = '';
-            currentSlideIndex = 0;
-
-            if (currentDetailPhotos.length === 0) {
-                photosSlider.innerHTML = `<p class="text-xs text-slate-400 w-full py-8 text-center">写真はありません</p>`;
-                updateSliderNav();
-            } else {
-                currentDetailPhotos.forEach((imgSrc, i) => {
-                    const slide = document.createElement('div');
-                    slide.className = 'snap-center shrink-0 w-full bg-slate-900 rounded-xl overflow-hidden flex flex-col items-center justify-center p-2 relative shadow-md h-[340px] sm:h-[400px] cursor-pointer group';
-                    slide.onclick = () => openImageViewer(imgSrc);
-                    slide.innerHTML = `
-                        <img src="${imgSrc}" class="max-h-full max-w-full object-contain rounded-lg transition-transform duration-300 group-hover:scale-[1.01]">
-                        <span class="absolute bottom-3 right-3 bg-black/70 text-white text-[10px] px-2.5 py-1 rounded-full opacity-80 group-hover:opacity-100 transition flex items-center gap-1">
-                            <i class="fa-solid fa-magnifying-glass-plus"></i> タップで全画面表示
-                        </span>
-                        <span class="absolute top-3 left-3 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-md font-bold">
-                            ${i + 1} / ${currentDetailPhotos.length}
-                        </span>
-                    `;
-                    photosSlider.appendChild(slide);
-                });
-
-                // Scroll listener for manual touch swipes
-                photosSlider.onscroll = () => {
-                    const width = photosSlider.clientWidth;
-                    if (width > 0) {
-                        currentSlideIndex = Math.round(photosSlider.scrollLeft / width);
-                        updateSliderNav();
-                    }
-                };
-
-                updateSliderNav();
-            }
-
-            // Bind Edit action button in modal
-            document.getElementById('detail-edit-btn').onclick = () => {
-                closePrintDetailModal();
-                editPrint(id);
-            };
-
-            document.getElementById('print-detail-modal').classList.remove('hidden');
-        }
-
-        // Slide photo slider programmatically
-        function slideDetailPhotos(direction) {
-            const photosSlider = document.getElementById('detail-photos-slider');
-            const total = currentDetailPhotos.length;
-            if (total === 0) return;
-
-            currentSlideIndex = Math.max(0, Math.min(total - 1, currentSlideIndex + direction));
-            const width = photosSlider.clientWidth;
-            photosSlider.scrollTo({
-                left: currentSlideIndex * width,
-                behavior: 'smooth'
-            });
-            updateSliderNav();
-        }
-
-        // Update Slider indicator and buttons state
-        function updateSliderNav() {
-            const total = currentDetailPhotos.length;
-            const indicator = document.getElementById('detail-slide-indicator');
-            const prevBtn = document.getElementById('slider-prev-btn');
-            const nextBtn = document.getElementById('slider-next-btn');
-
-            if (total <= 1) {
-                if (indicator) indicator.innerText = total > 0 ? `1/1` : `0/0`;
-                if (prevBtn) prevBtn.disabled = true;
-                if (nextBtn) nextBtn.disabled = true;
-                return;
-            }
-
-            if (indicator) indicator.innerText = `${currentSlideIndex + 1}/${total}`;
-            if (prevBtn) prevBtn.disabled = (currentSlideIndex === 0);
-            if (nextBtn) nextBtn.disabled = (currentSlideIndex === total - 1);
-        }
-
-        function closePrintDetailModal() {
-            document.getElementById('print-detail-modal').classList.add('hidden');
-        }
-
-        // Edit saved print
-        function editPrint(id) {
-            const print = savedPrints.find(p => p.id === id);
-            if (!print) return;
-
-            currentEditingId = print.id;
-            document.getElementById('print-title').value = print.title || '';
-            document.getElementById('subject-name').value = print.subject || '';
-            document.getElementById('print-date').value = print.date || '';
-            document.getElementById('class-info').value = print.classInfo || '';
-            document.getElementById('photo-caption').value = print.photoCaption || '';
-
-            // Restore images array
-            images = Array.isArray(print.images) ? [...print.images] : [];
-            renderPhotoList();
-            updatePreview();
-
-            switchTab('editor');
-            showToast('プリントデータを読み込みました');
-        }
-
-        // Reset current form
-        function resetForm() {
-            currentEditingId = null;
-            document.getElementById('print-title').value = '';
-            document.getElementById('subject-name').value = '';
-            document.getElementById('class-info').value = '';
-            document.getElementById('photo-caption').value = '';
-            
-            images = [];
-            renderPhotoList();
-            updatePreview();
-
-            showToast('入力欄をクリアしました');
-        }
-
-        // IndexedDB Functions
-        function initDB() {
+        function openDB() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open(DB_NAME, DB_VERSION);
                 request.onupgradeneeded = (e) => {
-                    const dbInstance = e.target.result;
-                    if (!dbInstance.objectStoreNames.contains(STORE_NAME)) {
-                        dbInstance.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
                     }
                 };
-                request.onsuccess = (e) => {
-                    db = e.target.result;
-                    resolve(db);
-                };
-                request.onerror = (e) => {
-                    console.error('IndexedDB Error:', e);
-                    reject(e);
-                };
+                request.onsuccess = (e) => resolve(e.target.result);
+                request.onerror = (e) => reject(e.target.error);
             });
         }
 
-        async function loadSavedPrints() {
-            if (!db) return;
-            const tx = db.transaction(STORE_NAME, 'readonly');
-            const store = tx.objectStore(STORE_NAME);
-            const request = store.getAll();
-
-            request.onsuccess = () => {
-                savedPrints = request.result || [];
-                savedPrints.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-                renderSavedPrints();
-            };
-        }
-
-        async function deleteSavedPrint(id) {
-            if (!db) return;
-            const tx = db.transaction(STORE_NAME, 'readwrite');
-            const store = tx.objectStore(STORE_NAME);
-            store.delete(id);
-
-            tx.oncomplete = async () => {
-                showToast('削除しました');
-                if (currentEditingId === id) {
-                    currentEditingId = null;
-                }
-                await loadSavedPrints();
-            };
-        }
-
-        // Create new print
-        function createNewPrint() {
-            resetForm();
-            switchTab('editor');
-        }
-
-        // Export Preview Area as PDF
-        function exportPDF() {
-            const title = document.getElementById('print-title').value.trim() || 'プリントシート';
-            const element = document.getElementById('printable-area');
-
-            showToast('PDFを作成中です...', 'info');
-
-            const opt = {
-                margin:       0,
-                filename:     `${title}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
-            html2pdf().set(opt).from(element).save().then(() => {
-                showToast('PDFのダウンロードを開始しました！');
-            }).catch(err => {
-                console.error(err);
-                showToast('PDF生成に失敗しました', 'error');
+        async function dbSavePrint(printObj) {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.put(printObj);
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error);
             });
         }
 
-        // Switch Tab Navigation
-        function switchTab(tab) {
-            const editorView = document.getElementById('editor-view');
-            const savedView = document.getElementById('saved-view');
-            const tabBtnEditor = document.getElementById('tab-btn-editor');
-            const tabBtnSaved = document.getElementById('tab-btn-saved');
-
-            if (tab === 'editor') {
-                editorView.classList.remove('hidden');
-                savedView.classList.add('hidden');
-
-                tabBtnEditor.className = "px-3 py-1.5 rounded-lg text-sm font-medium bg-white text-indigo-700 shadow-sm transition flex items-center gap-1.5";
-                tabBtnSaved.className = "px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-500/50 text-white transition flex items-center gap-1.5";
-            } else {
-                editorView.classList.add('hidden');
-                savedView.classList.remove('hidden');
-
-                tabBtnSaved.className = "px-3 py-1.5 rounded-lg text-sm font-medium bg-white text-indigo-700 shadow-sm transition flex items-center gap-1.5";
-                tabBtnEditor.className = "px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-500/50 text-white transition flex items-center gap-1.5";
-            }
+        async function dbGetAllPrints() {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const request = store.getAll();
+                request.onsuccess = () => resolve(request.result || []);
+                request.onerror = (e) => reject(e.target.error);
+            });
         }
 
-        // Show Toast Notification
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            const msg = document.getElementById('toast-msg');
-            const icon = document.getElementById('toast-icon');
+        async function dbDeletePrint(id) {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const store = tx.objectStore(STORE_NAME);
+                store.delete(id);
+                tx.oncomplete = () => resolve();
+                tx.onerror = (e) => reject(e.target.error);
+            });
+        }
 
-            msg.innerText = message;
+        // Global function definitions
+        window.switchTab = function(tabName) {
+            const sectionCreate = document.getElementById('section-create');
+            const sectionSaved = document.getElementById('section-saved');
+            const btnCreate = document.getElementById('tab-btn-create');
+            const btnSaved = document.getElementById('tab-btn-saved');
 
-            if (type === 'error') {
-                icon.className = 'fa-solid fa-circle-exclamation text-rose-400 text-base';
-            } else if (type === 'info') {
-                icon.className = 'fa-solid fa-circle-info text-sky-400 text-base';
+            if (!sectionCreate || !sectionSaved) return;
+
+            if (tabName === 'create') {
+                sectionCreate.classList.remove('hidden');
+                sectionSaved.classList.add('hidden');
+                if (btnCreate) btnCreate.className = "px-3 py-1.5 text-xs font-semibold rounded-lg bg-white text-indigo-600 transition shadow";
+                if (btnSaved) btnSaved.className = "px-3 py-1.5 text-xs font-semibold rounded-lg text-indigo-100 hover:bg-indigo-500 transition";
             } else {
-                icon.className = 'fa-solid fa-circle-check text-emerald-400 text-base';
+                sectionCreate.classList.add('hidden');
+                sectionSaved.classList.remove('hidden');
+                if (btnSaved) btnSaved.className = "px-3 py-1.5 text-xs font-semibold rounded-lg bg-white text-indigo-600 transition shadow";
+                if (btnCreate) btnCreate.className = "px-3 py-1.5 text-xs font-semibold rounded-lg text-indigo-100 hover:bg-indigo-500 transition";
+                loadSavedPrints();
             }
+        };
 
-            toast.classList.remove('translate-y-20', 'opacity-0');
+        // Initialize Application
+        window.addEventListener('DOMContentLoaded', () => {
+            const todayInput = document.getElementById('input-date');
+            if (todayInput) {
+                todayInput.value = new Date().toISOString().split('T')[0];
+            }
+            updatePreview();
+            loadSavedPrints();
+        });
+
+        // Live Preview Updater
+        function updatePreview() {
+            const title = document.getElementById('input-title')?.value.trim() || '';
+            const subject = document.getElementById('input-subject')?.value.trim() || '';
+            const dateVal = document.getElementById('input-date')?.value || '';
+            const memo = document.getElementById('input-memo')?.value.trim() || '';
+
+            const prevTitle = document.getElementById('prev-title');
+            const prevSubject = document.getElementById('prev-subject');
+            const prevDate = document.getElementById('prev-date');
+
+            if (prevTitle) prevTitle.textContent = title || 'タイトルなし';
+            if (prevSubject) prevSubject.textContent = subject || '教科未指定';
             
-            setTimeout(() => {
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 3000);
+            if (prevDate) {
+                if (dateVal) {
+                    const d = new Date(dateVal);
+                    prevDate.textContent = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+                } else {
+                    prevDate.textContent = '';
+                }
+            }
+
+            const memoBox = document.getElementById('prev-memo-box');
+            const prevMemo = document.getElementById('prev-memo');
+            if (memoBox && prevMemo) {
+                if (memo) {
+                    memoBox.classList.remove('hidden');
+                    prevMemo.textContent = memo;
+                } else {
+                    memoBox.classList.add('hidden');
+                }
+            }
+
+            renderPreviewPhotos();
         }
 
-        // Helper function to prevent XSS
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+        // Render Photos inside A4 Live Preview (with Horizontal Slider & Swipe)
+        function renderPreviewPhotos() {
+            const container = document.getElementById('prev-photos-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            if (currentPhotos.length === 0) {
+                container.innerHTML = `
+                    <div class="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center text-slate-400 my-4 bg-slate-50">
+                        <i class="fa-solid fa-image text-3xl mb-2 text-slate-300"></i>
+                        <p class="text-xs font-medium">ここにプリント写真が表示されます</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const sliderWrapper = document.createElement('div');
+            sliderWrapper.className = "relative group my-4";
+
+            const slider = document.createElement('div');
+            slider.className = "slider-container flex overflow-x-auto gap-4 py-2 px-1 snap-x snap-mandatory rounded-xl border border-slate-100 bg-slate-50";
+
+            currentPhotos.forEach((photoSrc, idx) => {
+                const slide = document.createElement('div');
+                slide.className = "slide-item flex-shrink-0 w-full flex flex-col items-center justify-center cursor-pointer relative";
+                slide.onclick = () => openZoomModal(currentPhotos, idx);
+
+                const img = document.createElement('img');
+                img.src = photoSrc;
+                img.alt = `プリント写真 ${idx + 1}`;
+                img.className = "max-h-[650px] w-auto object-contain rounded-lg border border-slate-200 shadow-sm";
+
+                slide.appendChild(img);
+                slider.appendChild(slide);
+            });
+
+            sliderWrapper.appendChild(slider);
+            container.appendChild(sliderWrapper);
+        }
+
+        // File Selection & Reading (Fixed async reading & rendering)
+        async function handleFileSelect(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            const fileArray = Array.from(files);
+            showToast('写真を読み込んでいます...', false);
+
+            const readPromises = fileArray.map(file => {
+                return new Promise((resolve) => {
+                    if (!file.type.startsWith('image/')) {
+                        resolve(null);
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = () => resolve(null);
+                    reader.readAsDataURL(file);
+                });
+            });
+
+            try {
+                const results = await Promise.all(readPromises);
+                const validPhotos = results.filter(res => res !== null);
+                
+                if (validPhotos.length > 0) {
+                    currentPhotos = currentPhotos.concat(validPhotos);
+                    renderPhotoList();
+                    updatePreview();
+                    showToast(`${validPhotos.length}枚の写真を追加しました`);
+                } else {
+                    showToast('有効な画像ファイルが選択されませんでした', true);
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('写真の追加に失敗しました', true);
+            } finally {
+                event.target.value = '';
+            }
+        }
+
+        // Render Uploaded Photos List on Left Control Panel
+        function renderPhotoList() {
+            const list = document.getElementById('photos-manage-list');
+            const badge = document.getElementById('photo-count-badge');
+            if (!list) return;
+            list.innerHTML = '';
+            if (badge) badge.textContent = `${currentPhotos.length}枚`;
+
+            if (currentPhotos.length === 0) {
+                list.innerHTML = `<p class="text-xs text-center text-slate-400 py-4">写真がまだありません。「写真をアップロード」から追加してください。</p>`;
+                return;
+            }
+
+            currentPhotos.forEach((src, idx) => {
+                const item = document.createElement('div');
+                item.className = "flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-x-2";
+
+                item.innerHTML = `
+                    <div class="flex items-center space-x-3 overflow-hidden cursor-pointer" onclick="openZoomModal(currentPhotos, ${idx})">
+                        <img src="${src}" class="w-12 h-12 object-cover rounded-lg border border-slate-200 shadow-sm flex-shrink-0">
+                        <div class="overflow-hidden">
+                            <p class="text-xs font-bold text-slate-700 truncate">写真 ${idx + 1}</p>
+                            <p class="text-[10px] text-indigo-600 font-semibold">タップで拡大表示</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-1">
+                        ${idx > 0 ? `<button onclick="movePhoto(${idx}, -1)" class="w-7 h-7 text-slate-500 hover:bg-slate-200 rounded-lg text-xs"><i class="fa-solid fa-arrow-up"></i></button>` : ''}
+                        ${idx < currentPhotos.length - 1 ? `<button onclick="movePhoto(${idx}, 1)" class="w-7 h-7 text-slate-500 hover:bg-slate-200 rounded-lg text-xs"><i class="fa-solid fa-arrow-down"></i></button>` : ''}
+                        <button onclick="removePhoto(${idx})" class="w-7 h-7 text-red-500 hover:bg-red-50 rounded-lg text-xs"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function movePhoto(index, direction) {
+            const targetIdx = index + direction;
+            if (targetIdx < 0 || targetIdx >= currentPhotos.length) return;
+            const temp = currentPhotos[index];
+            currentPhotos[index] = currentPhotos[targetIdx];
+            currentPhotos[targetIdx] = temp;
+            renderPhotoList();
+            updatePreview();
+        }
+
+        function removePhoto(index) {
+            currentPhotos.splice(index, 1);
+            renderPhotoList();
+            updatePreview();
+        }
+
+        // Save Print Item into IndexedDB
+        async function savePrintToStorage() {
+            const titleInput = document.getElementById('input-title');
+            const title = titleInput?.value.trim() || '';
+            if (!title) {
+                showToast('タイトルを入力してください', true);
+                if (titleInput) titleInput.focus();
+                return;
+            }
+
+            if (currentPhotos.length === 0) {
+                showToast('写真を少なくとも1枚追加してください', true);
+                return;
+            }
+
+            const printObj = {
+                id: 'print_' + Date.now(),
+                title: title,
+                subject: document.getElementById('input-subject')?.value.trim() || '',
+                date: document.getElementById('input-date')?.value || '',
+                memo: document.getElementById('input-memo')?.value.trim() || '',
+                photos: [...currentPhotos],
+                createdAt: new Date().toISOString()
+            };
+
+            try {
+                await dbSavePrint(printObj);
+                showToast('Study File に保存しました！');
+
+                if (titleInput) titleInput.value = '';
+                const subjectInput = document.getElementById('input-subject');
+                if (subjectInput) subjectInput.value = '';
+                const memoInput = document.getElementById('input-memo');
+                if (memoInput) memoInput.value = '';
+                
+                currentPhotos = [];
+                renderPhotoList();
+                updatePreview();
+
+                switchTab('saved');
+            } catch (err) {
+                console.error(err);
+                showToast('保存に失敗しました', true);
+            }
+        }
+
+        // Load & Render Saved Prints Gallery
+        async function loadSavedPrints() {
+            const grid = document.getElementById('saved-list-grid');
+            if (!grid) return;
+            grid.innerHTML = '<div class="col-span-full text-center py-8 text-slate-400">読み込み中...</div>';
+
+            try {
+                savedPrints = await dbGetAllPrints();
+                savedPrints.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+                grid.innerHTML = '';
+                if (savedPrints.length === 0) {
+                    grid.innerHTML = `
+                        <div class="col-span-full text-center py-12 bg-white rounded-2xl border border-slate-200 p-6">
+                            <i class="fa-solid fa-folder-open text-4xl text-slate-300 mb-3"></i>
+                            <h3 class="font-bold text-slate-700 text-sm">保存されたプリントはありません</h3>
+                            <p class="text-xs text-slate-400 mt-1">「プリント作成」タブから新しいプリントを作成・保存できます。</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                savedPrints.forEach(print => {
+                    const card = document.createElement('div');
+                    card.className = "bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between hover:shadow-md transition";
+
+                    let photosHtml = '';
+                    if (print.photos && print.photos.length > 0) {
+                        photosHtml = `
+                            <div class="relative group bg-slate-50 border-b border-slate-100">
+                                <div class="slider-container flex overflow-x-auto snap-x snap-mandatory py-2 px-2 gap-2 max-h-56">
+                                    ${print.photos.map((src, i) => `
+                                        <div class="slide-item flex-shrink-0 w-full flex justify-center cursor-pointer" onclick="openZoomModal(savedPrints.find(p=>p.id==='${print.id}').photos, ${i})">
+                                            <img src="${src}" class="max-h-52 w-auto object-contain rounded-lg border border-slate-200">
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                ${print.photos.length > 1 ? `<span class="absolute bottom-2 right-2 bg-slate-900/70 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full pointer-events-none">全 ${print.photos.length} 枚</span>` : ''}
+                            </div>
+                        `;
+                    }
+
+                    card.innerHTML = `
+                        <div>
+                            ${photosHtml}
+                            <div class="p-4 space-y-2">
+                                <div class="flex items-start justify-between gap-2">
+                                    <span class="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded-md">${print.subject || '教科なし'}</span>
+                                    <span class="text-[11px] text-slate-400">${print.date || ''}</span>
+                                </div>
+                                <h3 class="font-bold text-slate-800 text-base leading-tight">${print.title}</h3>
+                                ${print.memo ? `<p class="text-xs text-slate-500 bg-slate-50 p-2 rounded-lg whitespace-pre-wrap">${print.memo}</p>` : ''}
+                            </div>
+                        </div>
+
+                        <div class="p-4 pt-0 space-y-2">
+                            <button onclick="shareSavedPrintFiles('${print.id}')" class="w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition">
+                                <i class="fa-solid fa-share-nodes"></i> 他アプリへ転送
+                            </button>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="editSavedPrint('${print.id}')" class="py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition">
+                                    <i class="fa-solid fa-pen"></i> 再編集する
+                                </button>
+                                <button onclick="deleteSavedPrint('${print.id}')" class="py-2 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition">
+                                    <i class="fa-solid fa-trash"></i> 削除
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch (err) {
+                console.error(err);
+                grid.innerHTML = '<div class="col-span-full text-center py-8 text-red-500">保存リストの読み込みに失敗しました</div>';
+            }
+        }
+
+        // Re-edit Saved Print
+        async function editSavedPrint(id) {
+            const print = savedPrints.find(p => p.id === id);
+            if (!print) return;
+
+            const tInput = document.getElementById('input-title');
+            const sInput = document.getElementById('input-subject');
+            const dInput = document.getElementById('input-date');
+            const mInput = document.getElementById('input-memo');
+
+            if (tInput) tInput.value = print.title || '';
+            if (sInput) sInput.value = print.subject || '';
+            if (dInput) dInput.value = print.date || '';
+            if (mInput) mInput.value = print.memo || '';
+            
+            currentPhotos = print.photos ? [...print.photos] : [];
+
+            renderPhotoList();
+            updatePreview();
+            switchTab('create');
+            showToast('プリント情報を編集用に読み込みました');
+        }
+
+        // Delete Saved Print
+        async function deleteSavedPrint(id) {
+            if (!confirm('このプリントを削除してもよろしいですか？')) return;
+            try {
+                await dbDeletePrint(id);
+                showToast('削除しました');
+                loadSavedPrints();
+            } catch (err) {
+                console.error(err);
+                showToast('削除に失敗しました', true);
+            }
+        }
+
+        // Share photos via Web Share API
+        async function shareSavedPrintFiles(id) {
+            const print = savedPrints.find(p => p.id === id);
+            if (!print || !print.photos || print.photos.length === 0) {
+                showToast('共有できる写真がありません', true);
+                return;
+            }
+
+            try {
+                const files = [];
+                for (let i = 0; i < print.photos.length; i++) {
+                    const res = await fetch(print.photos[i]);
+                    const blob = await res.blob();
+                    const fileName = `${print.title || 'print'}_photo${i + 1}.png`;
+                    files.push(new File([blob], fileName, { type: 'image/png' }));
+                }
+
+                if (navigator.canShare && navigator.canShare({ files })) {
+                    // テキスト(text)を削除し、純粋に写真ファイルのみを転送
+                    await navigator.share({
+                        files: files
+                    });
+                } else {
+                    showToast('お使いのブラウザは直接共有に対応していません', true);
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error(err);
+                    showToast('共有に失敗しました', true);
+                }
+            }
+        }
+
+        // --- Full Screen Zoom & Slide Gallery Logic ---
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        function openZoomModal(photoArray, index = 0) {
+            if (!photoArray || !Array.isArray(photoArray) || photoArray.length === 0) return;
+            currentZoomList = [...photoArray];
+            currentZoomIndex = index;
+
+            updateZoomModalImage();
+            const modal = document.getElementById('modal-zoom-image');
+            if (modal) modal.classList.remove('hidden');
+
+            // Setup Touch Swipe Events
+            const viewport = document.getElementById('zoom-viewport');
+            if (viewport) {
+                viewport.ontouchstart = (e) => {
+                    touchStartX = e.changedTouches[0].screenX;
+                };
+                viewport.ontouchend = (e) => {
+                    touchEndX = e.changedTouches[0].screenX;
+                    handleSwipe();
+                };
+            }
+        }
+
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            if (touchEndX < touchStartX - swipeThreshold) {
+                nextZoomImage(); // Swipe left -> Next
+            } else if (touchEndX > touchStartX + swipeThreshold) {
+                prevZoomImage(); // Swipe right -> Prev
+            }
+        }
+
+        function updateZoomModalImage() {
+            const img = document.getElementById('zoom-modal-img');
+            const counter = document.getElementById('zoom-image-counter');
+            const prevBtn = document.getElementById('zoom-prev-btn');
+            const nextBtn = document.getElementById('zoom-next-btn');
+
+            if (!currentZoomList || currentZoomList.length === 0) return;
+
+            if (img) img.src = currentZoomList[currentZoomIndex] || '';
+            if (counter) counter.textContent = `${currentZoomIndex + 1} / ${currentZoomList.length}`;
+
+            if (currentZoomList.length <= 1) {
+                if (prevBtn) prevBtn.classList.add('hidden');
+                if (nextBtn) nextBtn.classList.add('hidden');
+            } else {
+                if (prevBtn) prevBtn.classList.remove('hidden');
+                if (nextBtn) nextBtn.classList.remove('hidden');
+            }
+        }
+
+        function prevZoomImage() {
+            if (!currentZoomList || currentZoomList.length <= 1) return;
+            currentZoomIndex = (currentZoomIndex - 1 + currentZoomList.length) % currentZoomList.length;
+            updateZoomModalImage();
+        }
+
+        function nextZoomImage() {
+            if (!currentZoomList || currentZoomList.length <= 1) return;
+            currentZoomIndex = (currentZoomIndex + 1) % currentZoomList.length;
+            updateZoomModalImage();
+        }
+
+        function closeZoomModal() {
+            const modal = document.getElementById('modal-zoom-image');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        // Toast Helper
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            const msg = document.getElementById('toast-message');
+
+            if (!toast || !msg) return;
+
+            msg.textContent = message;
+            if (isError) {
+                if (icon) icon.className = "fa-solid fa-circle-exclamation text-red-400 text-lg";
+            } else {
+                if (icon) icon.className = "fa-solid fa-circle-check text-emerald-400 text-lg";
+            }
+
+            toast.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+            }, 3000);
         }
     </script>
 </body>
